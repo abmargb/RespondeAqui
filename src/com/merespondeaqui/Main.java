@@ -21,6 +21,7 @@ import twitter4j.conf.ConfigurationBuilder;
 
 import com.merespondeaqui.calculator.CalculatorProcessor;
 import com.merespondeaqui.distance.DistanceProcessor;
+import com.merespondeaqui.placar.PlacarProcessor;
 import com.merespondeaqui.weather.WeatherProcessor;
 
 public class Main {
@@ -48,6 +49,7 @@ public class Main {
 		addProcessor(processors, new DistanceProcessor());
 		addProcessor(processors, new WeatherProcessor());
 		addProcessor(processors, new CalculatorProcessor());
+		addProcessor(processors, new PlacarProcessor());
 		
 		Long lastTweet = readLastTweetId();
 		
