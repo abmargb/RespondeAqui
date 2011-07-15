@@ -10,6 +10,7 @@ import twitter4j.TwitterException;
 
 import com.merespondeaqui.calculator.CalculatorProcessor;
 import com.merespondeaqui.distance.DistanceProcessor;
+import com.merespondeaqui.help.HelpProcessor;
 import com.merespondeaqui.placar.PlacarProcessor;
 import com.merespondeaqui.weather.WeatherProcessor;
 
@@ -28,6 +29,7 @@ public class TweetConsumer implements Runnable {
 		addProcessor(new WeatherProcessor());
 		addProcessor(new CalculatorProcessor());
 		addProcessor(new PlacarProcessor());
+		addProcessor(new HelpProcessor(this.processors.keySet()));
 	}
 	
 	@Override
