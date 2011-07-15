@@ -29,7 +29,7 @@ public class TweetConsumer implements Runnable {
 		addProcessor(new WeatherProcessor());
 		addProcessor(new CalculatorProcessor());
 		addProcessor(new PlacarProcessor());
-		addProcessor(new HelpProcessor(this.processors.keySet()));
+		addProcessor(new HelpProcessor());
 	}
 	
 	@Override
