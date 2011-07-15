@@ -64,7 +64,7 @@ public class PlacarProcessor implements Processor {
 	}
 
 	private String preProcess(String text) {
-		return text.replaceAll("?", "");
+		return text.replaceAll("\\?", "");
 	}
 
 	@Override
