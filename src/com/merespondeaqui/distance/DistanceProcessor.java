@@ -6,6 +6,7 @@ import twitter4j.Tweet;
 import twitter4j.Twitter;
 
 import com.merespondeaqui.Processor;
+import com.merespondeaqui.TwitterUtils;
 import com.merespondeaqui.Utils;
 
 public class DistanceProcessor implements Processor {
@@ -23,9 +24,8 @@ public class DistanceProcessor implements Processor {
 	}
 
 	@Override
-	public void process(Tweet tweet, Twitter twitter) {
+	public void process(Tweet tweet, Twitter twitter) throws Exception {
 		
-		String user = tweet.getFromUser();
 		String text = tweet.getText().toLowerCase();
 		
 		int indexPara = text.indexOf(PARA);
@@ -33,11 +33,10 @@ public class DistanceProcessor implements Processor {
 		String fromStr = text.substring(FULL_PREFIX.length() + DE.length() + 2, indexPara);
 		String toStr = text.substring(indexPara + PARA.length() + 1, text.length());
 		
-		try {
-			twitter.updateStatus("@" + user + " São " + FORMAT.format(Geocode.distance(fromStr, toStr)) + " Km");
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		TwitterUtils.reply(
+				"São " + FORMAT.format(Geocode.distance(fromStr, toStr)) + " Km", 
+				tweet, twitter);
+			
 	}
 
 }

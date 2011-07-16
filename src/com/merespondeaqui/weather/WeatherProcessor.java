@@ -16,6 +16,7 @@ import twitter4j.Tweet;
 import twitter4j.Twitter;
 
 import com.merespondeaqui.Processor;
+import com.merespondeaqui.TwitterUtils;
 import com.merespondeaqui.Utils;
 
 public class WeatherProcessor implements Processor {
@@ -27,7 +28,6 @@ public class WeatherProcessor implements Processor {
 	@Override
 	public void process(Tweet tweet, Twitter twitter) {
 		
-		String user = tweet.getFromUser();
 		String text = tweet.getText().toLowerCase();
 		
 		String fromStr = text.substring(FULL_PREFIX.length() + EM.length() + 2);
@@ -52,7 +52,8 @@ public class WeatherProcessor implements Processor {
 			Node humidity = findNode(currentCondition, "humidity");
 			String humidityStr = humidity.getAttributes().getNamedItem("data").getNodeValue();
 			
-			twitter.updateStatus("@" + user + " Clima: " + conditionStr + ", Temperatura: " + tempCStr + "ºC e " + humidityStr);
+			String message = "Clima: " + conditionStr + ", Temperatura: " + tempCStr + "ºC e " + humidityStr;
+			TwitterUtils.reply(message, tweet, twitter);
 			
 		} catch (Exception e) {
 			e.printStackTrace();

@@ -6,12 +6,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 import net.java.dev.eval.Expression;
-
 import twitter4j.Tweet;
 import twitter4j.Twitter;
 import twitter4j.TwitterException;
 
 import com.merespondeaqui.Processor;
+import com.merespondeaqui.TwitterUtils;
 import com.merespondeaqui.Utils;
 
 public class CalculatorProcessor implements Processor {
@@ -23,7 +23,6 @@ public class CalculatorProcessor implements Processor {
 
 	@Override
 	public void process(Tweet tweet, Twitter twitter) throws TwitterException {
-		String user = tweet.getFromUser();
 		String text = tweet.getText();
 
 		String expr = text.substring(FULL_PREFIX.length() + 1);
@@ -34,7 +33,8 @@ public class CalculatorProcessor implements Processor {
 		
 		result.setScale(SCALE, BigDecimal.ROUND_HALF_UP);
 
-		twitter.updateStatus("@" + user + " Resultado: '" + FORMAT.format(result) + "'");
+		TwitterUtils.reply("Resultado: '" + FORMAT.format(result) + "'", 
+				tweet, twitter);
 	}
 
 	@Override

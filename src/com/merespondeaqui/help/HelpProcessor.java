@@ -5,6 +5,7 @@ import twitter4j.Twitter;
 import twitter4j.TwitterException;
 
 import com.merespondeaqui.Processor;
+import com.merespondeaqui.TwitterUtils;
 
 public class HelpProcessor implements Processor {
 
@@ -13,9 +14,9 @@ public class HelpProcessor implements Processor {
 	
 	@Override
 	public void process(Tweet tweet, Twitter twitter) throws TwitterException {
-		
-		twitter.updateStatus("@" + tweet.getFromUser() + " " +
-				"Ajuda do @merespondeaqui: " + HELP_URL);
+		TwitterUtils.reply(
+				"Ajuda do @merespondeaqui: " + HELP_URL, 
+				tweet, twitter);
 	}
 
 	@Override

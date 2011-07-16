@@ -30,6 +30,7 @@ import twitter4j.Twitter;
 import twitter4j.TwitterException;
 
 import com.merespondeaqui.Processor;
+import com.merespondeaqui.TwitterUtils;
 import com.merespondeaqui.Utils;
 
 public class PlacarProcessor implements Processor {
@@ -131,7 +132,7 @@ public class PlacarProcessor implements Processor {
 				response = teamHome + " " + score + " " + teamAway + ", " + clock.trim();
 			}
 			
-			twitter.updateStatus("@" + tweet.getFromUser() + " " + response);
+			TwitterUtils.reply(response, tweet, twitter);
 		}
 	}
 	

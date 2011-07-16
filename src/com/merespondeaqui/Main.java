@@ -34,7 +34,7 @@ public class Main {
 		
 		BlockingQueue<Tweet> tweetQueue = new LinkedBlockingQueue<Tweet>();
 		new Thread(new TweetCrawler(twitter, tweetQueue)).start();
-		new Thread(new TweetConsumer(twitter, tweetQueue)).start();
+		new Thread(new TweetConsumer(twitter, tweetQueue, properties)).start();
 			
 	}
 }
