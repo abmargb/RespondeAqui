@@ -2,7 +2,6 @@ package com.merespondeaqui;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 
 import twitter4j.Tweet;
@@ -13,6 +12,7 @@ import com.merespondeaqui.distance.DistanceProcessor;
 import com.merespondeaqui.help.HelpProcessor;
 import com.merespondeaqui.phone.PhoneSearchProcessor;
 import com.merespondeaqui.placar.PlacarProcessor;
+import com.merespondeaqui.places.PlaceSearchProcessor;
 import com.merespondeaqui.weather.WeatherProcessor;
 
 public class TweetConsumer implements Runnable {
@@ -21,7 +21,7 @@ public class TweetConsumer implements Runnable {
 	private final BlockingQueue<Tweet> tweetQueue;
 	private final Twitter twitter;
 
-	public TweetConsumer(Twitter twitter, BlockingQueue<Tweet> tweetQueue, Properties properties) {
+	public TweetConsumer(Twitter twitter, BlockingQueue<Tweet> tweetQueue) {
 		this.twitter = twitter;
 		this.tweetQueue = tweetQueue;
 		
@@ -31,7 +31,8 @@ public class TweetConsumer implements Runnable {
 		addProcessor(new CalculatorProcessor());
 		addProcessor(new PlacarProcessor());
 		addProcessor(new HelpProcessor());
-		addProcessor(new PhoneSearchProcessor(properties));
+		addProcessor(new PhoneSearchProcessor());
+		addProcessor(new PlaceSearchProcessor());
 	}
 	
 	@Override

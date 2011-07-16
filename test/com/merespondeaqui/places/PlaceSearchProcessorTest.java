@@ -1,4 +1,4 @@
-package com.merespondeaqui.phone;
+package com.merespondeaqui.places;
 
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -11,17 +11,17 @@ import twitter4j.Twitter;
 
 import com.merespondeaqui.TweetImpl;
 
-public class PhoneSearchProcessorTest {
+public class PlaceSearchProcessorTest {
 
 	@Test
-	public void testPhoneSearch() throws Exception {
+	public void testPlaceSearch() throws Exception {
 
 		Twitter twitter = Mockito.mock(Twitter.class);
 		
-		PhoneSearchProcessor phoneProcessor = new PhoneSearchProcessor();
+		PlaceSearchProcessor placesProcessor = new PlaceSearchProcessor();
 		Tweet tweet = new TweetImpl(
-				"@merespondeaqui #qualotelefone do Bar do Cuscuz, Campina Grande", "user");
-		phoneProcessor.process(tweet, twitter);
+				"@merespondeaqui #ondetem restaurante perto do Cuscuz, Campina Grande", "user");
+		placesProcessor.process(tweet, twitter);
 		
 		String response = "@user Bar Do Cuscuz, (83) 3322-4232 http://bit.ly/";
 		Mockito.verify(twitter).updateStatus(createStatusMatcher(response));

@@ -1,4 +1,4 @@
-package com.merespondeaqui;
+package com.merespondeaqui.utils;
 
 public class Utils {
 

@@ -12,7 +12,7 @@ import twitter4j.TwitterException;
 
 import com.merespondeaqui.Processor;
 import com.merespondeaqui.TwitterUtils;
-import com.merespondeaqui.Utils;
+import com.merespondeaqui.utils.Utils;
 
 public class CalculatorProcessor implements Processor {
 

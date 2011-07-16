@@ -1,12 +1,10 @@
 package com.merespondeaqui.phone;
 
-import java.io.ByteArrayInputStream;
 import java.net.URLEncoder;
-import java.util.Properties;
-
-import javax.xml.parsers.DocumentBuilderFactory;
+import java.util.Arrays;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.WordUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -18,9 +16,12 @@ import twitter4j.Tweet;
 import twitter4j.Twitter;
 import twitter4j.auth.BasicAuthorization;
 
+import com.merespondeaqui.Configuration;
 import com.merespondeaqui.Processor;
 import com.merespondeaqui.TwitterUtils;
-import com.merespondeaqui.Utils;
+import com.merespondeaqui.utils.BitlyUtils;
+import com.merespondeaqui.utils.Utils;
+import com.merespondeaqui.utils.XMLUtils;
 
 public class PhoneSearchProcessor implements Processor {
 
@@ -29,14 +30,12 @@ public class PhoneSearchProcessor implements Processor {
 	
 	private DefaultHttpClient httpClient;
 	private String authHeader;
-	private String bitlyUser;
-	private String bitlyAPIKey;
 	
-	public PhoneSearchProcessor(Properties properties) {
-		String consumerKey = properties.getProperty("apontador.consumerkey");
-		String consumerSecret = properties.getProperty("apontador.consumersecret");
-		this.bitlyUser = properties.getProperty("bitly.username");
-		this.bitlyAPIKey = properties.getProperty("bitly.apikey");
+	public PhoneSearchProcessor() {
+		String consumerKey = Configuration.getInstance().getProperty(
+				"apontador.consumerkey");
+		String consumerSecret = Configuration.getInstance().getProperty(
+				"apontador.consumersecret");
 		
 		this.authHeader = new BasicAuthorization(consumerKey, consumerSecret)
 				.getAuthorizationHeader(null);
@@ -53,76 +52,50 @@ public class PhoneSearchProcessor implements Processor {
 		
 		HttpGet httpget = new HttpGet("http://api.apontador.com.br/v1/search/places?q=" + URLEncoder.encode(place, "UTF-8"));
 		httpget.setHeader("Authorization", authHeader);
-		
 		HttpResponse httpResponse = httpClient.execute(httpget);
 		
 		String xmlString = IOUtils.toString(httpResponse.getEntity().getContent());
-		Document xmlDocument = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(
-				new ByteArrayInputStream(xmlString.getBytes("UTF8")));
+		Document xmlDocument = XMLUtils.createDocument(xmlString);
 		NodeList places = xmlDocument.getElementsByTagName("place");
 		
 		if (places.getLength() == 0) {
-			TwitterUtils.reply("Não foi encontrado estabelecimento para a busca '" + place + "'", 
+			TwitterUtils.reply("Não foi encontrado nenhum estabelecimento para a busca '" + place + "'", 
 					tweet, twitter);
 			return;
 		}
 		
 		Node placeNode = places.item(0);
 		
-		String name = findNode(placeNode, "name").getTextContent();
-		String url = findNode(placeNode, "main_url").getTextContent();
+		String name = XMLUtils.findNode(placeNode, "name").getTextContent();
+		String url = XMLUtils.findNode(placeNode, "main_url").getTextContent();
 		
-		Node phoneNode = findNode(placeNode, "phone");
-		String area = findNode(phoneNode, "area").getTextContent();
-		String number = findNode(phoneNode, "number").getTextContent();
+		Node phoneNode = XMLUtils.findNode(placeNode, "phone");
+		String area = XMLUtils.findNode(phoneNode, "area").getTextContent();
+		String number = XMLUtils.findNode(phoneNode, "number").getTextContent();
 		
-		TwitterUtils.reply(capitalize(name) + ", (" + area + ") " + number + " " + shortenURL(url), 
-				tweet, twitter);
+		String message = WordUtils.capitalizeFully(name) + ", (" + area + ") "
+				+ fixAndFormatNumber(number) + " "
+				+ BitlyUtils.shortenURL(url);
+		
+		TwitterUtils.reply(message, tweet, twitter);
 	}
 
-	private String shortenURL(String url) throws Exception {
+	private static String fixAndFormatNumber(String number) {
+		char[] numberArray = number.toCharArray();
+		if (numberArray[0] == '0') {
+			numberArray[0] = '3';
+		}
 		
-		HttpGet httpget = new HttpGet(
-				"http://api.bit.ly/shorten?format=xml&version=2.0.1&longUrl=" + url
-						+ "&login=" + bitlyUser + "&apiKey=" + bitlyAPIKey);
-		HttpResponse httpResponse = httpClient.execute(httpget);
-		
-		String xmlString = IOUtils.toString(httpResponse.getEntity().getContent());
-		Document xmlDocument = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(
-				new ByteArrayInputStream(xmlString.getBytes("UTF8")));
-		String shortUrl = xmlDocument.getElementsByTagName("shortUrl").item(0).getTextContent();
-		
-		return shortUrl;
+		StringBuilder numberBuilder = new StringBuilder();
+		numberBuilder.append(Arrays.copyOfRange(numberArray, 0, 4)).append("-")
+				.append(Arrays.copyOfRange(numberArray, 4, 8));
+		return numberBuilder.toString();
 	}
 
-	private static Node findNode(Node parentNode, String key) {
-		NodeList childNodes = parentNode.getChildNodes();
-		for (int i = 0; i < childNodes.getLength(); i++) {
-			Node childNode = childNodes.item(i);
-			if (childNode.getNodeName().equals(key)) {
-				return childNode;
-			}
-		}
-		return null;
-	}
-	
-	private static String capitalize(String str) {
-		String[] splitted = str.split("\\s+");
-		StringBuilder strBuilder = new StringBuilder();
-		for (String word : splitted) {
-			char[] lowerWord = word.toLowerCase().toCharArray();
-			lowerWord[0] = Character.toUpperCase(word.charAt(0));
-			strBuilder.append(new String(lowerWord)).append(" ");
-		}
-		
-		return strBuilder.toString().trim();
-	}
-	
 	@Override
 	public String getPrefix() {
 		return PREFIX;
 	}
-
 }
 
 

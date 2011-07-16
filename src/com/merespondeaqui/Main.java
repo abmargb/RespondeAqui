@@ -1,8 +1,5 @@
 package com.merespondeaqui;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -13,16 +10,9 @@ import twitter4j.conf.ConfigurationBuilder;
 
 public class Main {
 
-	private static final String PROPERTIES_FILE = "conf.properties";
-
 	public static void main(String[] args) {
 		
-		Properties properties = new Properties();
-		try {
-			properties.load(new FileInputStream(PROPERTIES_FILE));
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
+		Configuration properties = Configuration.getInstance();
 		
 		ConfigurationBuilder configurationBuilder = new ConfigurationBuilder();
 		configurationBuilder.setOAuthConsumerKey(properties.getProperty("consumerkey"));
@@ -34,7 +24,7 @@ public class Main {
 		
 		BlockingQueue<Tweet> tweetQueue = new LinkedBlockingQueue<Tweet>();
 		new Thread(new TweetCrawler(twitter, tweetQueue)).start();
-		new Thread(new TweetConsumer(twitter, tweetQueue, properties)).start();
+		new Thread(new TweetConsumer(twitter, tweetQueue)).start();
 			
 	}
 }

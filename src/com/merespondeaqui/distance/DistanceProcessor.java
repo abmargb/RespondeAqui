@@ -7,7 +7,8 @@ import twitter4j.Twitter;
 
 import com.merespondeaqui.Processor;
 import com.merespondeaqui.TwitterUtils;
-import com.merespondeaqui.Utils;
+import com.merespondeaqui.utils.GeoUtils;
+import com.merespondeaqui.utils.Utils;
 
 public class DistanceProcessor implements Processor {
 
@@ -34,7 +35,7 @@ public class DistanceProcessor implements Processor {
 		String toStr = text.substring(indexPara + PARA.length() + 1, text.length());
 		
 		TwitterUtils.reply(
-				"São " + FORMAT.format(Geocode.distance(fromStr, toStr)) + " Km", 
+				"São " + FORMAT.format(GeoUtils.distance(fromStr, toStr)) + " Km", 
 				tweet, twitter);
 			
 	}

@@ -31,7 +31,8 @@ import twitter4j.TwitterException;
 
 import com.merespondeaqui.Processor;
 import com.merespondeaqui.TwitterUtils;
-import com.merespondeaqui.Utils;
+import com.merespondeaqui.utils.Utils;
+import com.merespondeaqui.utils.XMLUtils;
 
 public class PlacarProcessor implements Processor {
 
@@ -103,11 +104,11 @@ public class PlacarProcessor implements Processor {
 			Node node = teamList.item(i);
 			Node parentNode = node.getParentNode().getParentNode();
 			
-			Node nodeTeamHome = findNodeByClass(parentNode, "team-home").getFirstChild().getFirstChild();
-			Node nodeTeamAway = findNodeByClass(parentNode, "team-away").getFirstChild().getFirstChild();
-			Node nodeScore = findNodeByClass(parentNode, "score-live").getFirstChild().getFirstChild();
-			Node nodeTime = findNodeByClass(parentNode, "td-left").getFirstChild();
-			Node nodeEtat = findNodeByClass(parentNode, "etat").getLastChild();
+			Node nodeTeamHome = XMLUtils.findNodeByClass(parentNode, "team-home").getFirstChild().getFirstChild();
+			Node nodeTeamAway = XMLUtils.findNodeByClass(parentNode, "team-away").getFirstChild().getFirstChild();
+			Node nodeScore = XMLUtils.findNodeByClass(parentNode, "score-live").getFirstChild().getFirstChild();
+			Node nodeTime = XMLUtils.findNodeByClass(parentNode, "td-left").getFirstChild();
+			Node nodeEtat = XMLUtils.findNodeByClass(parentNode, "etat").getLastChild();
 			
 			boolean started = hasStarted(nodeScore.getParentNode());
 			
@@ -152,17 +153,6 @@ public class PlacarProcessor implements Processor {
 		input = Normalizer.normalize(input, Normalizer.Form.NFD);  
 		input = input.replaceAll("[^\\p{ASCII}]", "");  
 		return input; 
-	}
-	
-	private static Node findNodeByClass(Node currentCondition, String key) {
-		NodeList childNodes = currentCondition.getChildNodes();
-		for (int i = 0; i < childNodes.getLength(); i++) {
-			Node childNode = childNodes.item(i);
-			if (childNode.getAttributes().getNamedItem("class").getNodeValue().equals(key)) {
-				return childNode;
-			}
-		}
-		return null;
 	}
 
 }
