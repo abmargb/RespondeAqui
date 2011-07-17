@@ -5,10 +5,25 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
 
+import javax.xml.parsers.ParserConfigurationException;
+
+import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import net.sf.json.JSONSerializer;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+
+import twitter4j.auth.BasicAuthorization;
+
+import com.merespondeaqui.Configuration;
 
 
 public class GeoUtils {
@@ -16,30 +31,54 @@ public class GeoUtils {
 	private static final double WGS84_a = 6378137.0;  // Major semiaxis [m]
 	private static final double WGS84_b = 6356752.3;  // Minor semiaxis [m]
 	
-	public static double distance(String fromStr, String toStr) throws MalformedURLException, IOException {
+	public static double distance(String fromStr, String toStr) throws Exception {
 		
 		LatLng fromLatLng = getLatLng(fromStr);
 		LatLng toLatLng = getLatLng(toStr);
 		
-		return distFrom(fromLatLng.lat, fromLatLng.lng, 
+		return distance(fromLatLng.lat, fromLatLng.lng, 
 				toLatLng.lat, toLatLng.lng);
 	}
 	
 	public static double[] boundingBox(String placeStr, double distanceInKm)
-			throws MalformedURLException, UnsupportedEncodingException,
-			IOException {
+			throws Exception {
 		LatLng latLng = getLatLng(placeStr);
-		return boundingBox(latLng.lat, latLng.lng, distanceInKm);
+		return boundingBox(latLng, distanceInKm);
+	}
+	
+	public static double[] boundingBox(LatLng placeLatLon, double distanceInKm)
+			throws Exception {
+		return boundingBox(placeLatLon.lat, placeLatLon.lng, distanceInKm);
 	}
 
-	private static LatLng getLatLng(String fromStr) throws IOException,
-			MalformedURLException, UnsupportedEncodingException {
+	public static LatLng getLatLng(String fromStr) throws Exception {
+		LatLng latLng = null;
+		
+		if ((latLng = getLatLngFromGoogle(fromStr)) != null) {
+			return latLng;
+		}
+		
+		if ((latLng = getLatLngFromApontador(fromStr)) != null) {
+			return latLng;
+		}
+		
+		return null;
+	}
+
+	private static LatLng getLatLngFromGoogle(String fromStr)
+			throws IOException, MalformedURLException,
+			UnsupportedEncodingException {
 		String jsonStr = IOUtils.toString(new URL(
 				"http://maps.google.com/maps/api/geocode/json?address=" + URLEncoder.encode(fromStr, "UTF-8") + "&sensor=false"
 		).openStream());
 		
 		JSONObject json = (JSONObject) JSONSerializer.toJSON(jsonStr);
-		JSONObject result = (JSONObject) json.getJSONArray("results").get(0);
+		JSONArray resultArray = json.getJSONArray("results");
+		if (resultArray.size() == 0) {
+			return null;
+		}
+		
+		JSONObject result = (JSONObject) resultArray.get(0);
 		JSONObject location = result.getJSONObject("geometry").getJSONObject("location");
 		double lat = location.getDouble("lat");
 		double lng = location.getDouble("lng");
@@ -47,7 +86,46 @@ public class GeoUtils {
 		return new LatLng(lat, lng);
 	}
 	
-	public static double distFrom(double lat1, double lng1, double lat2, double lng2) {
+	private static LatLng getLatLngFromApontador(String fromStr)
+			throws ClientProtocolException, IOException, SAXException,
+			ParserConfigurationException {
+		
+		String consumerKey = Configuration.getInstance().getProperty(
+				"apontador.consumerkey");
+		String consumerSecret = Configuration.getInstance().getProperty(
+				"apontador.consumersecret");
+
+		String authHeader = new BasicAuthorization(consumerKey, consumerSecret)
+				.getAuthorizationHeader(null);
+		
+		HttpGet httpget = new HttpGet("http://api.apontador.com.br/v1/search/places?q=" + URLEncoder.encode(fromStr, "UTF-8"));
+		httpget.setHeader("Authorization", authHeader);
+		HttpResponse httpResponse = new DefaultHttpClient().execute(httpget);
+		
+		String xmlString = IOUtils.toString(httpResponse.getEntity().getContent());
+		
+		Document xmlDocument = XMLUtils.createDocument(xmlString);
+		NodeList places = xmlDocument.getElementsByTagName("place");
+		
+		if (places.getLength() == 0) {
+			return null;
+		}
+		
+		Node placeNode = places.item(0);
+		
+		
+		Node pointNode = XMLUtils.findNode(placeNode, "point");
+		double lat = Double.valueOf(XMLUtils.findNode(pointNode, "lat").getTextContent());
+		double lng = Double.valueOf(XMLUtils.findNode(pointNode, "lng").getTextContent());
+
+		LatLng latLng = new LatLng(lat, lng);
+		String id = XMLUtils.findNode(placeNode, "id").getTextContent();
+		latLng.setPlaceId(id);
+		
+		return latLng;
+	}
+	
+	public static double distance(double lat1, double lng1, double lat2, double lng2) {
 		double earthRadiusInMIles = 3958.75;
 		double dLat = Math.toRadians(lat2 - lat1);
 		double dLng = Math.toRadians(lng2 - lng1);
@@ -96,13 +174,30 @@ public class GeoUtils {
 				Math.toDegrees(latMax), Math.toDegrees(lonMax) };
 	}
 	    
-	private static class LatLng {
-		double lat;
-		double lng;
+	public static class LatLng {
+		final double lat;
+		final double lng;
+		private String placeId;
 		
 		public LatLng(double lat, double lng) {
 			this.lat = lat;
 			this.lng = lng;
+		}
+
+		public void setPlaceId(String id) {
+			this.placeId = id;
+		}
+
+		public String getPlaceId() {
+			return placeId;
+		}
+		
+		public double getLat() {
+			return lat;
+		}
+		
+		public double getLng() {
+			return lng;
 		}
 	}
 

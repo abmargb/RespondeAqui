@@ -15,7 +15,8 @@ public class TweetImpl implements Tweet {
 	private static final long serialVersionUID = 1L;
 	private final String text;
 	private final String user;
-
+	private GeoLocation geoLocation;
+	
 	public TweetImpl(String text, String user) {
 		this.text = text;
 		this.user = user;
@@ -76,9 +77,13 @@ public class TweetImpl implements Tweet {
 		return null;
 	}
 
+	public void setGeoLocation(GeoLocation geoLocation) {
+		this.geoLocation = geoLocation;
+	}
+	
 	@Override
 	public GeoLocation getGeoLocation() {
-		return null;
+		return geoLocation;
 	}
 
 	@Override

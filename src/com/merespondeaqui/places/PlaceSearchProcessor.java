@@ -1,6 +1,14 @@
 package com.merespondeaqui.places;
 
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map.Entry;
+
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.WordUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -9,6 +17,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import twitter4j.GeoLocation;
 import twitter4j.Tweet;
 import twitter4j.Twitter;
 import twitter4j.auth.BasicAuthorization;
@@ -18,17 +27,20 @@ import com.merespondeaqui.Processor;
 import com.merespondeaqui.TwitterUtils;
 import com.merespondeaqui.utils.BitlyUtils;
 import com.merespondeaqui.utils.GeoUtils;
+import com.merespondeaqui.utils.GeoUtils.LatLng;
 import com.merespondeaqui.utils.Utils;
 import com.merespondeaqui.utils.XMLUtils;
 
 public class PlaceSearchProcessor implements Processor {
 
 	private static final String PERTO = "perto";
+	private static final String DAQUI = "daqui";
 	private static final String PREFIX = "ondetem";
 	private static final String FULL_PREFIX = Utils.createFullPrefix(PREFIX);
 	
 	private DefaultHttpClient httpClient;
 	private String authHeader;
+	private HashMap<String, Integer> categories;
 	
 	public PlaceSearchProcessor() {
 		Configuration properties = Configuration.getInstance();
@@ -38,6 +50,12 @@ public class PlaceSearchProcessor implements Processor {
 		this.authHeader = new BasicAuthorization(consumerKey, consumerSecret)
 				.getAuthorizationHeader(null);
 		this.httpClient = new DefaultHttpClient();
+		
+		try {
+			loadCategories();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	
@@ -51,26 +69,62 @@ public class PlaceSearchProcessor implements Processor {
 		
 		String text = tweet.getText().toLowerCase();
 		
-		int indexPara = text.indexOf(PERTO);
+		int indexPerto = text.indexOf(PERTO);
+		int indexFimPerto = indexPerto + PERTO.length() + 1;
 		
-		String categoriaStr = text.substring(FULL_PREFIX.length() + 1, indexPara);
-		int indexOfNextSpace = text.indexOf(" ", indexPara + PERTO.length() + 1);
+		String categoriaStr = text.substring(FULL_PREFIX.length() + 1, indexPerto - 1);
+		int indexOfNextSpace = text.indexOf(" ", indexFimPerto);
 		
-		String placeStr = text.substring(indexOfNextSpace + 1, text.length());
+		LatLng placeLatLng = null;
+		String placeStr = null;
 		
-		double[] boundingBox = GeoUtils.boundingBox(placeStr, 1.);
+		boolean temDaqui = false;
 		
-		findPlaces(categoriaStr, boundingBox, tweet, twitter);
+		try {
+			temDaqui = text.substring(indexFimPerto, indexFimPerto + DAQUI.length()).equals(DAQUI);
+		} catch (Exception e) {}
+		
+		if (temDaqui) {
+			
+			GeoLocation geoLocation = tweet.getGeoLocation();
+			if (geoLocation == null) {
+				TwitterUtils.reply(
+						"Desculpe, mas não sei onde você está. Seu dispositivo tem GPS?", tweet, twitter);
+				return;
+			}
+			
+			placeStr = DAQUI;
+			placeLatLng = new LatLng(geoLocation.getLatitude(),
+					geoLocation.getLongitude());
+		} else {
+			placeStr = text.substring(indexOfNextSpace + 1, text.length());
+			placeLatLng = GeoUtils.getLatLng(placeStr);
+		}
+		
+		double[] boundingBox = GeoUtils.boundingBox(placeLatLng, 0.5);
+		
+		findPlaces(categoriaStr, placeStr, placeLatLng, boundingBox, tweet, twitter);
 			
 	}
 	
-	private void findPlaces(String category, double[] boundingBox, Tweet tweet, Twitter twitter) throws Exception {
+	private void findPlaces(String category, String placeStr,
+			LatLng placeLatLng, double[] boundingBox, Tweet tweet,
+			Twitter twitter) throws Exception {
 
+		Integer categoryId = findCategoryId(category);
+		
+		if (categoryId == null) {
+			TwitterUtils.reply(
+					"Não foi encontrada nenhuma categoria de estabelecimento para a busca '"
+							+ category + "'", tweet, twitter);
+			return;
+		}
+		
 		HttpGet httpget = new HttpGet(
 				"http://api.apontador.com.br/v1/search/places/bybox?se_lat="
 						+ boundingBox[0] + "&se_lng=" + boundingBox[1]
 						+ "&nw_lat=" + boundingBox[2] + "&nw_lng="
-						+ boundingBox[3]);
+						+ boundingBox[3] + "&category_id=" + categoryId);
 		httpget.setHeader("Authorization", authHeader);
 		
 		HttpResponse httpResponse = httpClient.execute(httpget);
@@ -80,13 +134,42 @@ public class PlaceSearchProcessor implements Processor {
 		
 		NodeList places = xmlDocument.getElementsByTagName("place");
 		
-		if (places.getLength() == 0) {
-			TwitterUtils.reply("Não foi encontrado nenhum estabelecimento para a busca '" + category + "'", 
+		List<PlaceNode> placeNodes = new LinkedList<PlaceSearchProcessor.PlaceNode>();
+		
+		for (int i = 0; i < places.getLength(); i++) {
+			
+			Node placeNode = places.item(i);
+			
+			String placeId = XMLUtils.findNode(placeNode, "id").getTextContent();
+			
+			if (placeLatLng.getPlaceId() != null
+					&& placeLatLng.getPlaceId().equals(placeId)) {
+				continue;
+			}
+			
+			Node pointNode = XMLUtils.findNode(placeNode, "point");
+			double lat = Double.valueOf(XMLUtils.findNode(pointNode, "lat").getTextContent());
+			double lng = Double.valueOf(XMLUtils.findNode(pointNode, "lng").getTextContent());
+			
+			placeNodes.add(new PlaceNode(GeoUtils.distance(placeLatLng.getLat(),
+					placeLatLng.getLng(), lat, lng), placeNode));
+			
+		}
+		
+		if (placeNodes.isEmpty()) {
+			TwitterUtils.reply("Não foi encontrado nenhum estabelecimento próximo a '" + placeStr + "'", 
 					tweet, twitter);
 			return;
 		}
 		
-		Node placeNode = places.item(0);
+		Collections.sort(placeNodes, new Comparator<PlaceNode>() {
+			@Override
+			public int compare(PlaceNode o1, PlaceNode o2) {
+				return o1.distance.compareTo(o2.distance);
+			}
+		});
+		
+		Node placeNode = placeNodes.iterator().next().node;
 		
 		String name = XMLUtils.findNode(placeNode, "name").getTextContent();
 		String url = XMLUtils.findNode(placeNode, "main_url").getTextContent();
@@ -96,12 +179,77 @@ public class PlaceSearchProcessor implements Processor {
 		String number = XMLUtils.findNode(addressNode, "number").getTextContent();
 		String district = XMLUtils.findNode(addressNode, "district").getTextContent();
 		
-		String message = WordUtils.capitalizeFully(name) + ", " + street + ", " + number + ", "
-				+ district + " "
+		String message = WordUtils.capitalizeFully(name) + ", " + street
+				+ ", " + number + ", " + district + " "
 				+ BitlyUtils.shortenURL(url);
-
+		
 		TwitterUtils.reply(message, tweet, twitter);
 	}
 	
+	private static class PlaceNode {
+		Double distance;
+		Node node;
+		
+		public PlaceNode(Double distance, Node node) {
+			this.distance = distance;
+			this.node = node;
+		}
+	}
+	
+	private Integer findCategoryId(String category) {
+		
+		double minSimilarity = Double.MAX_VALUE;
+		Integer categoryId = 0;
+		
+		for (Entry<String, Integer> categoryEntry : categories.entrySet()) {
+			String name = categoryEntry.getKey();
+			
+			double similarity = 0;
+			if (!name.contains(category)) {
+				int size = Math.max(category.length(), name.length());
+				similarity = (double) StringUtils.getLevenshteinDistance(name,
+						category) / (double) size;
+			}
+			
+			if (similarity < minSimilarity) {
+				categoryId = categoryEntry.getValue();
+				minSimilarity = similarity;
+			}
+			
+			if (minSimilarity < 0.1) {
+				return categoryId;
+			}
+		}
+		
+		if (minSimilarity > 0.5) {
+			return null;
+		}
+		
+		return categoryId;
+	}
 
+
+	private void loadCategories() throws Exception {
+		
+		HttpGet httpget = new HttpGet(
+				"http://api.apontador.com.br/v1/categories");
+		httpget.setHeader("Authorization", authHeader);
+		
+		HttpResponse httpResponse = httpClient.execute(httpget);
+		
+		String xmlString = IOUtils.toString(httpResponse.getEntity().getContent());
+		Document xmlDocument = XMLUtils.createDocument(xmlString);
+		
+		NodeList categoriesList = xmlDocument.getElementsByTagName("category");
+		
+		this.categories = new HashMap<String, Integer>();
+		
+		for (int i = 0; i < categoriesList.getLength(); i++) {
+			Node categoryNode = categoriesList.item(i);
+			Integer id = Integer.valueOf(XMLUtils.findNode(categoryNode, "id").getTextContent());
+			String name = XMLUtils.findNode(categoryNode, "name").getTextContent();
+			
+			categories.put(name, id);
+		}
+	}
 }
