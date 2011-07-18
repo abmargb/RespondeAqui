@@ -74,12 +74,8 @@ public class BuscapeProcessor implements Processor {
 	@Override
 	public void process(Tweet tweet, Twitter twitter) throws Exception {
 		String text = tweet.getText();
-		
-		String[] splitText = text.split("\\s+");
-		String product = text.substring(FULL_PREFIX.length() + splitText[2].length() + 2);
-		
+		String product = text.substring(FULL_PREFIX.length()).trim();
 		String result = doRequest(product);
-		
 		TwitterUtils.reply(result, tweet, twitter);
 	}
 
