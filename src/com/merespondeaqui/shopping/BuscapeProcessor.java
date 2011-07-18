@@ -1,10 +1,8 @@
 package com.merespondeaqui.shopping;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.util.Properties;
 
-import net.sf.json.JSON;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
@@ -16,31 +14,26 @@ import org.apache.http.impl.client.DefaultHttpClient;
 
 import twitter4j.Tweet;
 import twitter4j.Twitter;
-import twitter4j.auth.BasicAuthorization;
 
 import com.merespondeaqui.Processor;
-import com.merespondeaqui.Utils;
+import com.merespondeaqui.TwitterUtils;
+import com.merespondeaqui.utils.Utils;
 
 public class BuscapeProcessor implements Processor {
 
 	private static final String PREFIX = "qualomelhorpreco";
 	private static final String FULL_PREFIX = Utils.createFullPrefix(PREFIX);
 	
-	private String bitlyUser;
-	private String bitlyAPIKey;
 	private DefaultHttpClient httpClient;
 	private String appId;
 
 	public BuscapeProcessor(Properties properties) {
 		appId = properties.getProperty("buscape.applicationid");
 		
-		this.bitlyUser = properties.getProperty("bitly.username");
-		this.bitlyAPIKey = properties.getProperty("bitly.apikey");
-		
 		this.httpClient = new DefaultHttpClient();
 	}
 
-	private void doRequest(String search) {
+	private String doRequest(String search) {
 		HttpGet httpget = new HttpGet("http://sandbox.buscape.com/service/findProductList/" + appId + "/?keyword=" + search +
 				"&format=json&sort=price");
 		try {
@@ -67,11 +60,7 @@ public class BuscapeProcessor implements Processor {
 				}
 			}
 			
-			
-			System.out.println("Name: " + shortName);
-			System.out.println("Price: " + price);
-			System.out.println("Link: " + link);
-			
+			return shortName + " : " + price + " : " + link;
 		} catch (ClientProtocolException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -79,6 +68,7 @@ public class BuscapeProcessor implements Processor {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		return null;
 	}
 	
 	@Override
@@ -86,12 +76,11 @@ public class BuscapeProcessor implements Processor {
 		String text = tweet.getText();
 		
 		String[] splitText = text.split("\\s+");
-		String place = text.substring(FULL_PREFIX.length() + splitText[2].length() + 2);
+		String product = text.substring(FULL_PREFIX.length() + splitText[2].length() + 2);
 		
-		HttpGet httpget = new HttpGet("http://api.apontador.com.br/v1/search/places?q=" + URLEncoder.encode(place, "UTF-8"));
+		String result = doRequest(product);
 		
-		HttpResponse httpResponse = httpClient.execute(httpget);
-		
+		TwitterUtils.reply(result, tweet, twitter);
 	}
 
 	@Override
