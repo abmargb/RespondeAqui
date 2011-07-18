@@ -1,7 +1,6 @@
 package com.merespondeaqui.shopping;
 
 import java.io.IOException;
-import java.util.Properties;
 
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -15,6 +14,7 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import twitter4j.Tweet;
 import twitter4j.Twitter;
 
+import com.merespondeaqui.Configuration;
 import com.merespondeaqui.Processor;
 import com.merespondeaqui.TwitterUtils;
 import com.merespondeaqui.utils.Utils;
@@ -27,12 +27,12 @@ public class BuscapeProcessor implements Processor {
 	private DefaultHttpClient httpClient;
 	private String appId;
 
-	public BuscapeProcessor(Properties properties) {
-		appId = properties.getProperty("buscape.applicationid");
+	public BuscapeProcessor() {
+		appId = Configuration.getInstance().getProperty("buscape.applicationid");
 		
 		this.httpClient = new DefaultHttpClient();
 	}
-
+	
 	private String doRequest(String search) {
 		HttpGet httpget = new HttpGet("http://sandbox.buscape.com/service/findProductList/" + appId + "/?keyword=" + search +
 				"&format=json&sort=price");
@@ -88,12 +88,4 @@ public class BuscapeProcessor implements Processor {
 		return PREFIX;
 	}
 	
-	public static void main(String[] args) {
-		Properties p = new Properties();
-		p.setProperty("buscape.applicationid", "564771466d477a4458664d3d");
-		
-		BuscapeProcessor bp = new BuscapeProcessor(p);
-		bp.doRequest("n900");
-	}
-
 }
